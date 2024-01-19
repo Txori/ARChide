@@ -1,0 +1,5 @@
+Gameboy=GB
+Gameboy Advance=GBA
+Gameboy Color=GBC
+NES=NES
+Nintendo 64=N64
