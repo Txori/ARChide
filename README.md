@@ -43,5 +43,5 @@ Now that all hidden games are gathered in the `_hidden` folder, you can do whate
 
 10. Put your sdcard back in your device.
 11. Launch ARC Browser.
-12. Rescan your collection: Tools > Database tasks > Rescan without scrapping
+12. Rescan your collection: Tools > Database tasks > Rescan without scrapping > All
 13. Answer YES to the question about the Deleted Games.
