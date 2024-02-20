@@ -25,6 +25,7 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
     // Check if necessary files exist
     if (!fs::exists(inputFile) || !fs::exists(configFile)) {
         std::cerr << "Error: " << (fs::exists(inputFile) ? configFile : inputFile) << " not found." << std::endl;
+        std::cout << std::endl;
         std::cout << "Press Enter to exit" << std::endl;
         std::cin.get();
         std::exit(EXIT_FAILURE);
