@@ -39,9 +39,9 @@ Nintendo 64=N64
 ```
 If you don't know the exact name of the systems, run `ARChide.exe` to identify the missing systems and add them to the configuration file.
 
-9. Run ARChide
+9. Run ARChide (as Administrator)
 
-Once configured, run `ARChide.exe`, and all hidden games will be moved to the `_delete` folder while maintaining the folder hierarchy, in case you want to revert.
+Once configured, run `ARChide.exe` as Administrator, and all hidden games will be moved to the `_delete` folder while maintaining the folder hierarchy, in case you want to revert.
 For example, the hidden game `roms/GBA/Crazy Frog Racer (Europe) (En,Fr,De,Nl).zip` will be automatically move to `roms/_hidden/GBA/Crazy Frog Racer (Europe) (En,Fr,De,Nl).zip`.
 
 Now that all hidden games are gathered in the `_delete` folder, you can do whatever you want with them!
