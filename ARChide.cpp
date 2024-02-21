@@ -47,7 +47,7 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
     std::cout << "Systems found in " << configFile << ":" << std::endl;
     std::cout << std::endl;
     for (const auto& entry : system) {
-        std::cout << "System: " << entry.first << ", Folder: " << entry.second << std::endl;
+        std::cout << "- " << entry.first << " [" << entry.second << "]" << std::endl;
     }
     std::cout << std::endl;
 
