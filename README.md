@@ -20,7 +20,7 @@ Simply use [w64devkit by skeeto](https://github.com/skeeto/w64devkit): ```g++ -O
 
 1. Launch ARC Browser.
 2. Hide unwanted games.
-3. Export your list of games to CSV: Tools > Database tasks > List games in database > Done > Export to CSV > Do not include any hash
+3. Export your list of games to CSV: ```Tools > Database tasks > List games in database > Done > Export to CSV > Do not include any hash```
 4. Exit ARC Browser.
 5. Retrieve CSV file from `Android/data/net.floatingpoint.android.arcturus/data/games.csv` and move it to your rom folder.
 
@@ -42,11 +42,11 @@ If you don't know the exact name of the systems, run `ARChide.exe` to identify t
 9. Run ARChide (as Administrator)
 
 Once configured, run `ARChide.exe` as Administrator, and all hidden games will be moved to the `_delete` folder while maintaining the folder hierarchy, in case you want to revert.
-For example, the hidden game `roms/GBA/Crazy Frog Racer (Europe) (En,Fr,De,Nl).zip` will be automatically move to `roms/_hidden/GBA/Crazy Frog Racer (Europe) (En,Fr,De,Nl).zip`.
+For example, the hidden game `roms/GBA/Crazy Frog Racer (Europe) (En,Fr,De,Nl).zip` will be automatically move to `roms/_delete/GBA/Crazy Frog Racer (Europe) (En,Fr,De,Nl).zip`.
 
 Now that all hidden games are gathered in the `_delete` folder, you can do whatever you want with them!
 
 10. Put your sdcard back in your device.
 11. Launch ARC Browser.
-12. Rescan your collection: Tools > Database tasks > Rescan without scrapping > All
+12. Rescan your collection: ```Tools > Database tasks > Rescan without scrapping > All```
 13. Answer YES to the question about the Deleted Games.
