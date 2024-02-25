@@ -1,5 +1,5 @@
 /*
-    ARChide 0.1.0 by Etienne Bégué - www.txori.com
+    ARChide 0.1.1 by Etienne Bégué - www.txori.com
     Easily retrieve and gather the games you have hidden in ARC Browser!
 
     Compile using w64devkit (https://github.com/skeeto/w64devkit):
@@ -14,7 +14,13 @@
 #include <set>
 #include <filesystem>
 
-const std::string VERSION = "0.1.0";
+// Add these definitions for text colors
+#define RESET_COLOR "\033[0m"
+#define GREEN_COLOR "\033[32m"
+#define YELLOW_COLOR "\033[33m"
+#define RED_COLOR "\033[31m"
+
+const std::string VERSION = "0.1.1";
 const std::string INPUT_FILE = "games.csv";
 const std::string CONFIG_FILE = "config.txt";
 const std::string DELETE_FOLDER = "_delete";
@@ -24,9 +30,9 @@ namespace fs = std::filesystem;
 void moveHiddenGames(const std::string& inputFile, const std::string& configFile, const std::string& deleteFolder) {
     // Check if necessary files exist
     if (!fs::exists(inputFile) || !fs::exists(configFile)) {
-        std::cerr << "Error: " << (fs::exists(inputFile) ? configFile : inputFile) << " not found." << std::endl;
+        std::cerr << RED_COLOR << "Error: " << (fs::exists(inputFile) ? configFile : inputFile) << " not found" << std::endl;
         std::cout << std::endl;
-        std::cout << "Press Enter to exit" << std::endl;
+        std::cout << RESET_COLOR << "Press Enter to exit" << std::endl;
         std::cin.get();
         std::exit(EXIT_FAILURE);
     }
@@ -47,7 +53,7 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
     std::cout << "Systems found in " << configFile << ":" << std::endl;
     std::cout << std::endl;
     for (const auto& entry : system) {
-        std::cout << "- " << entry.first << " [" << entry.second << "]" << std::endl;
+        std::cout << entry.first << " [" << entry.second << "]" << std::endl;
     }
     std::cout << std::endl;
 
@@ -88,18 +94,19 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
     // If missing systems are found, print and stop the script
     if (!missingSystems.empty()) {
         std::cout << std::endl;
-        std::cerr << "Error: Missing systems in " << configFile << ":" << std::endl;
+        std::cerr << RED_COLOR << "Error: Missing systems in " << configFile << ":" << std::endl;
         for (const auto& missingSystem : missingSystems) {
             std::cerr << " - " << missingSystem << std::endl;
         }
         std::cout << std::endl;
-        std::cout << "Press Enter to exit" << std::endl;
+        std::cout << RESET_COLOR << "Press Enter to exit" << std::endl;
         std::cin.get();
         std::exit(EXIT_FAILURE);
     }
 
     // Initialize counters for successful moves and errors
-    int successfulMoves = 0;
+    int successCount = 0;
+    int warningCount = 0;
     int errorCount = 0;
 
     // Second pass to actually move hidden games
@@ -135,7 +142,8 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
                         // Build the destination path in the _hidden directory
                         fs::path destinationPath = fs::path(deleteFolder) / systemFolder / filename;
 
-                        try {
+                        // Check if the file exists at both filePath and destinationPath
+                        if (fs::exists(filePath)) {
                             // Create the system-specific folder in the delete_folder if it doesn't exist
                             fs::path systemFolderPath = fs::path(deleteFolder) / systemFolder;
                             if (!fs::exists(systemFolderPath)) {
@@ -144,18 +152,23 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
 
                             // Move the file to the destination path
                             fs::rename(filePath, destinationPath);
-                            std::cout << "+ " << fs::relative(filePath).string() << std::endl;
-                            successfulMoves++;
-                        }
-                        catch (const std::filesystem::filesystem_error& e) {
-                            std::cerr << "! " << fs::relative(filePath).string() << std::endl;
-                            errorCount++;
+                            std::cout << GREEN_COLOR << "+ " << fs::relative(filePath).string() << std::endl;
+                            successCount++;
+                        } else {
+                            if (fs::exists(destinationPath)) {
+                                // File is already moved to destinationPath
+                                std::cerr << YELLOW_COLOR << "- " << fs::relative(filePath).string() << std::endl;
+                                warningCount++;
+                            } else {
+                                // File is missing from filePath
+                                std::cerr << RED_COLOR << "! " << fs::relative(filePath).string() << std::endl;
+                                errorCount++;
+                            }
                         }
                     }
                 }
-            }
-            catch (const std::exception& e) {
-                std::cerr << "Error processing row: " << e.what() << std::endl;
+            } catch (const std::exception& e) {
+                std::cerr << RED_COLOR <<  "Error processing row: " << e.what() << std::endl;
                 errorCount++;
             }
         }
@@ -165,11 +178,16 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
 
     // Display the results
     std::cout << std::endl;
-    if (successfulMoves > 0) {
-        std::cout << successfulMoves << " games moved successfully (+)" << std::endl;
+    std::cout << RESET_COLOR << "Results:" << std::endl;
+    std::cout << std::endl;
+    if (successCount > 0) {
+        std::cout << GREEN_COLOR << "+ " << RESET_COLOR << successCount << " games moved successfully" << std::endl;
+    }
+    if (warningCount > 0) {
+        std::cout << YELLOW_COLOR << "- " << RESET_COLOR << warningCount << " games already moved" << std::endl;
     }
     if (errorCount > 0) {
-        std::cout << errorCount << " errors encountered (!)" << std::endl;
+        std::cout << RED_COLOR << "! " << RESET_COLOR << errorCount << " games not found" << std::endl;
     }
 }
 
