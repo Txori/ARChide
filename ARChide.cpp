@@ -1,5 +1,5 @@
 /*
-    ARChide 0.1.1 by Etienne Bégué - www.txori.com
+    ARChide, by Etienne Bégué - www.txori.com
     Easily retrieve and gather the games you have hidden in ARC Browser!
 
     Compile using w64devkit (https://github.com/skeeto/w64devkit):
@@ -14,153 +14,210 @@
 #include <set>
 #include <filesystem>
 
-// Add these definitions for text colors
-#define RESET_COLOR "\033[0m"
-#define GREEN_COLOR "\033[32m"
-#define YELLOW_COLOR "\033[33m"
-#define RED_COLOR "\033[31m"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-const std::string VERSION = "0.1.1";
+// Version of the program
+const std::string VERSION = "0.2.0";
+
+// Files and folder names
 const std::string INPUT_FILE = "games.csv";
 const std::string CONFIG_FILE = "config.txt";
 const std::string DELETE_FOLDER = "_delete";
 
+// Definitions for text colors
+const char* RESET_COLOR = "\033[0m";
+const char* RED_COLOR = "\033[31m";
+const char* GREEN_COLOR = "\033[32m";
+const char* YELLOW_COLOR = "\033[33m";
+
 namespace fs = std::filesystem;
 
-void moveHiddenGames(const std::string& inputFile, const std::string& configFile, const std::string& deleteFolder) {
-    // Check if necessary files exist
+// Struct that follows the ARC browser database
+struct GameInfo {
+    std::string system;
+    std::string filename;
+    std::string name;
+    std::string scraperDatabase;
+    std::string scraperDatabaseID;
+    std::string confidence;
+    std::string hidden;
+    std::string favorite;
+};
+
+GameInfo extractGameInfo(const std::string& row) {
+    GameInfo gameInfo;
+    std::istringstream rowStream(row);
+    std::getline(rowStream, gameInfo.system, ',');
+    std::getline(rowStream, gameInfo.filename, ',');
+    std::getline(rowStream, gameInfo.name, ',');
+    std::getline(rowStream, gameInfo.scraperDatabase, ',');
+    std::getline(rowStream, gameInfo.scraperDatabaseID, ',');
+    std::getline(rowStream, gameInfo.confidence, ',');
+    std::getline(rowStream, gameInfo.hidden, ',');
+    std::getline(rowStream, gameInfo.favorite, ',');
+    return gameInfo;
+}
+
+
+// Function to enable ANSI colors mode for Windows terminal (ex: conhost.exe)
+void setupConsoleMode() {
+#ifdef _WIN32
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode;
+    
+    // Get the current console mode
+    GetConsoleMode(hConsole, &mode);
+
+    // Enable ANSI escape codes in the console mode
+    SetConsoleMode(hConsole, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+#endif
+}
+
+
+// Function to print the program header
+void printHeader(const std::string& version) {
+    std::cout << "   _   ___  ___ _    _    _" << std::endl;
+    std::cout << "  /_\\ | _ \\/ __| |_ (_)__| |___" << std::endl;
+    std::cout << " / _ \\|   / (__| ' \\| / _` / -_)" << std::endl;
+    std::cout << "/_/ \\_\\_|_\\\\___|_||_|_\\__,_\\___|" << std::endl;
+    std::cout << "                           " << version << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+}
+
+
+// Function to display an exit message and wait for user input
+void exitMessage() {
+    std::cout << std::endl;
+    std::cout << "Press any key to exit" << std::endl;
+#ifdef _WIN32
+    system("pause >nul");
+#else
+    system("read -n 1 -s -r -p \"\"");
+#endif
+    std::exit(EXIT_FAILURE);
+}
+
+
+// Function to check if necessary files INPUT_FILE and CONFIG_FILE exists
+void checkFilesExist(const std::string& inputFile, const std::string& configFile) {
     if (!fs::exists(inputFile) || !fs::exists(configFile)) {
         std::cerr << RED_COLOR << "Error: " << (fs::exists(inputFile) ? configFile : inputFile) << " not found" << std::endl;
-        std::cout << std::endl;
-        std::cout << RESET_COLOR << "Press Enter to exit" << std::endl;
-        std::cin.get();
-        std::exit(EXIT_FAILURE);
+        exitMessage();
     }
+}
 
-    // Read the configuration file into a map
-    std::map<std::string, std::string> system;
+
+// Function to read the configuration file CONFIG_FILE into a map
+std::map<std::string, std::string> readConfigFile(const std::string& configFile) {
+    std::map<std::string, std::string> systems;
     std::ifstream configStream(configFile);
     std::string line;
     while (std::getline(configStream, line)) {
         std::istringstream iss(line);
         std::string key, value;
         if (std::getline(iss, key, '=') && std::getline(iss, value)) {
-            system[key] = value;
+            systems[key] = value;
         }
     }
 
-    // Debug output: Print contents of the 'system' map
+    // Print contents of the 'systems' map
     std::cout << "Systems found in " << configFile << ":" << std::endl;
     std::cout << std::endl;
-    for (const auto& entry : system) {
+    for (const auto& entry : systems) {
         std::cout << entry.first << " [" << entry.second << "]" << std::endl;
     }
     std::cout << std::endl;
 
-    // Create the delete folder if it doesn't exist
+    return systems;
+}
+
+
+// Function to create the delete folder if it doesn't exist
+void createDeleteFolder(const std::string& deleteFolder) {
     if (!fs::exists(deleteFolder)) {
         fs::create_directories(deleteFolder);
     }
+}
 
-    // Process the input file - First pass to check missing systems
+
+// Function to process the input file - First pass to check missing systems
+std::set<std::string> checkMissingSystems(const std::string& inputFile, const std::map<std::string, std::string>& systems) {
     std::set<std::string> missingSystems;
     std::ifstream inputFileStream(inputFile, std::ios::in | std::ios::binary);
     if (inputFileStream) {
         std::string row;
-        // Assuming the first line is a header and we skip it
-        std::getline(inputFileStream, row);
+        std::getline(inputFileStream, row); // Skip header
         while (std::getline(inputFileStream, row)) {
-            std::istringstream rowStream(row);
-            std::string systemName, filename, name, scraperDatabase, scraperDatabaseID, confidence, hidden, favorite;
-            std::getline(rowStream, systemName, ',');
-            std::getline(rowStream, filename, ',');
-            std::getline(rowStream, name, ',');
-            std::getline(rowStream, scraperDatabase, ',');
-            std::getline(rowStream, scraperDatabaseID, ',');
-            std::getline(rowStream, confidence, ',');
-            std::getline(rowStream, hidden, ',');
-            std::getline(rowStream, favorite, ',');
-
-            if (hidden == "HIDDEN") {
-                // Check if the system is configured
-                if (system.find(systemName) == system.end()) {
-                    missingSystems.insert(systemName);
-                }
+            GameInfo gameInfo = extractGameInfo(row);
+            if (gameInfo.hidden == "HIDDEN" && systems.find(gameInfo.system) == systems.end()) {
+                missingSystems.insert(gameInfo.system);
             }
         }
     }
     inputFileStream.close();
+    return missingSystems;
+}
 
-    // If missing systems are found, print and stop the script
+
+// Function to display missing systems and exit if any
+void displayMissingSystems(const std::set<std::string>& missingSystems, const std::string& configFile) {
     if (!missingSystems.empty()) {
         std::cout << std::endl;
         std::cerr << RED_COLOR << "Error: Missing systems in " << configFile << ":" << std::endl;
         for (const auto& missingSystem : missingSystems) {
             std::cerr << " - " << missingSystem << std::endl;
         }
-        std::cout << std::endl;
-        std::cout << RESET_COLOR << "Press Enter to exit" << std::endl;
-        std::cin.get();
-        std::exit(EXIT_FAILURE);
+        exitMessage();
     }
+}
 
-    // Initialize counters for successful moves and errors
+
+// Function to move hidden games listed in INPUT_FILE to DELETE_FOLDER
+void moveHiddenGames(const std::string& inputFile, const std::map<std::string, std::string>& systems, const std::string& deleteFolder) {
     int successCount = 0;
     int warningCount = 0;
     int errorCount = 0;
 
-    // Second pass to actually move hidden games
+    std::set<std::string> missingSystems = checkMissingSystems(inputFile, systems);
+    displayMissingSystems(missingSystems, CONFIG_FILE);
+
+    createDeleteFolder(deleteFolder);
+
     std::cout << std::endl;
     std::cout << "Moving hidden games to " << deleteFolder << " folder:" << std::endl;
     std::cout << std::endl;
-    inputFileStream.open(inputFile, std::ios::in | std::ios::binary);
 
+    std::ifstream inputFileStream(inputFile, std::ios::in | std::ios::binary);
     if (inputFileStream) {
         std::string row;
-        // Assuming the first line is a header and we skip it
-        std::getline(inputFileStream, row);
+        std::getline(inputFileStream, row); // Skip header
         while (std::getline(inputFileStream, row)) {
             try {
-                std::istringstream rowStream(row);
-                std::string systemName, filename, name, scraperDatabase, scraperDatabaseID, confidence, hidden, favorite;
-                std::getline(rowStream, systemName, ',');
-                std::getline(rowStream, filename, ',');
-                std::getline(rowStream, name, ',');
-                std::getline(rowStream, scraperDatabase, ',');
-                std::getline(rowStream, scraperDatabaseID, ',');
-                std::getline(rowStream, confidence, ',');
-                std::getline(rowStream, hidden, ',');
-                std::getline(rowStream, favorite, ',');
+                GameInfo gameInfo = extractGameInfo(row);
 
-                if (hidden == "HIDDEN") {
-                    // Get the folder name for the system
-                    std::string systemFolder = system[systemName];
+                if (gameInfo.hidden == "HIDDEN") {
+                    std::string systemFolder = systems.at(gameInfo.system);
                     if (!systemFolder.empty()) {
-                        // Build the full path to the file
-                        fs::path filePath = fs::path(systemFolder) / filename;
+                        fs::path filePath = fs::path(systemFolder) / gameInfo.filename;
+                        fs::path destinationPath = fs::path(deleteFolder) / systemFolder / gameInfo.filename;
 
-                        // Build the destination path in the _hidden directory
-                        fs::path destinationPath = fs::path(deleteFolder) / systemFolder / filename;
-
-                        // Check if the file exists at both filePath and destinationPath
                         if (fs::exists(filePath)) {
-                            // Create the system-specific folder in the delete_folder if it doesn't exist
                             fs::path systemFolderPath = fs::path(deleteFolder) / systemFolder;
                             if (!fs::exists(systemFolderPath)) {
                                 fs::create_directories(systemFolderPath);
                             }
 
-                            // Move the file to the destination path
                             fs::rename(filePath, destinationPath);
                             std::cout << GREEN_COLOR << "+ " << fs::relative(filePath).string() << std::endl;
                             successCount++;
                         } else {
                             if (fs::exists(destinationPath)) {
-                                // File is already moved to destinationPath
                                 std::cerr << YELLOW_COLOR << "- " << fs::relative(filePath).string() << std::endl;
                                 warningCount++;
                             } else {
-                                // File is missing from filePath
                                 std::cerr << RED_COLOR << "! " << fs::relative(filePath).string() << std::endl;
                                 errorCount++;
                             }
@@ -176,7 +233,6 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
 
     inputFileStream.close();
 
-    // Display the results
     std::cout << std::endl;
     std::cout << RESET_COLOR << "Results:" << std::endl;
     std::cout << std::endl;
@@ -189,19 +245,15 @@ void moveHiddenGames(const std::string& inputFile, const std::string& configFile
     if (errorCount > 0) {
         std::cout << RED_COLOR << "! " << RESET_COLOR << errorCount << " games not found" << std::endl;
     }
+
+    exitMessage();
 }
 
+
 int main() {
-    std::cout << "   _   ___  ___ _    _    _" << std::endl;
-    std::cout << "  /_\\ | _ \\/ __| |_ (_)__| |___" << std::endl;
-    std::cout << " / _ \\|   / (__| ' \\| / _` / -_)" << std::endl;
-    std::cout << "/_/ \\_\\_|_\\\\___|_||_|_\\__,_\\___|" << std::endl;
-    std::cout << "                           " << VERSION << std::endl;
-    std::cout << std::endl;
-    std::cout << std::endl;
-    moveHiddenGames(INPUT_FILE, CONFIG_FILE, DELETE_FOLDER);
-    std::cout << std::endl;
-    std::cout << "Press Enter to exit" << std::endl;
-    std::cin.get();
+    setupConsoleMode();
+    printHeader(VERSION);
+    checkFilesExist(INPUT_FILE, CONFIG_FILE);
+    moveHiddenGames(INPUT_FILE, readConfigFile(CONFIG_FILE), DELETE_FOLDER);
     return 0;
 }
