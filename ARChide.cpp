@@ -34,7 +34,7 @@ const char* YELLOW_COLOR = "\033[33m";
 
 namespace fs = std::filesystem;
 
-// Struct that follows the ARC browser database
+// Struct that follows the ARC Browser database naming convention
 struct GameInfo {
     std::string system;
     std::string filename;
