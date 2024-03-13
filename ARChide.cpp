@@ -22,7 +22,7 @@
 const std::string VERSION = "0.2.0";
 
 // Files and folder names
-const std::string INPUT_FILE = "games.csv";
+const std::string LIST_FILE = "games.csv";
 const std::string CONFIG_FILE = "config.txt";
 const std::string DELETE_FOLDER = "_delete";
 
@@ -101,10 +101,10 @@ void exitMessage() {
 }
 
 
-// Function to check if necessary files INPUT_FILE and CONFIG_FILE exists
-void checkFilesExist(const std::string& inputFile, const std::string& configFile) {
-    if (!fs::exists(inputFile) || !fs::exists(configFile)) {
-        std::cerr << RED_COLOR << "Error: " << (fs::exists(inputFile) ? configFile : inputFile) << " not found" << std::endl;
+// Function to check if necessary files LIST_FILE and CONFIG_FILE exists
+void checkFilesExist(const std::string& listFile, const std::string& configFile) {
+    if (!fs::exists(listFile) || !fs::exists(configFile)) {
+        std::cerr << RED_COLOR << "Error: " << (fs::exists(listFile) ? configFile : listFile) << " not found" << std::endl;
         exitMessage();
     }
 }
@@ -144,20 +144,20 @@ void createDeleteFolder(const std::string& deleteFolder) {
 
 
 // Function to process the input file - First pass to check missing systems
-std::set<std::string> checkMissingSystems(const std::string& inputFile, const std::map<std::string, std::string>& systems) {
+std::set<std::string> checkMissingSystems(const std::string& listFile, const std::map<std::string, std::string>& systems) {
     std::set<std::string> missingSystems;
-    std::ifstream inputFileStream(inputFile, std::ios::in | std::ios::binary);
-    if (inputFileStream) {
+    std::ifstream listFileStream(listFile, std::ios::in | std::ios::binary);
+    if (listFileStream) {
         std::string row;
-        std::getline(inputFileStream, row); // Skip header
-        while (std::getline(inputFileStream, row)) {
+        std::getline(listFileStream, row); // Skip header
+        while (std::getline(listFileStream, row)) {
             GameInfo gameInfo = extractGameInfo(row);
             if (gameInfo.hidden == "HIDDEN" && systems.find(gameInfo.system) == systems.end()) {
                 missingSystems.insert(gameInfo.system);
             }
         }
     }
-    inputFileStream.close();
+    listFileStream.close();
     return missingSystems;
 }
 
@@ -175,13 +175,13 @@ void displayMissingSystems(const std::set<std::string>& missingSystems, const st
 }
 
 
-// Function to move hidden games listed in INPUT_FILE to DELETE_FOLDER
-void moveHiddenGames(const std::string& inputFile, const std::map<std::string, std::string>& systems, const std::string& deleteFolder) {
+// Function to move hidden games listed in LIST_FILE to DELETE_FOLDER
+void moveHiddenGames(const std::string& listFile, const std::map<std::string, std::string>& systems, const std::string& deleteFolder) {
     int successCount = 0;
     int warningCount = 0;
     int errorCount = 0;
 
-    std::set<std::string> missingSystems = checkMissingSystems(inputFile, systems);
+    std::set<std::string> missingSystems = checkMissingSystems(listFile, systems);
     displayMissingSystems(missingSystems, CONFIG_FILE);
 
     createDeleteFolder(deleteFolder);
@@ -190,11 +190,11 @@ void moveHiddenGames(const std::string& inputFile, const std::map<std::string, s
     std::cout << "Moving hidden games to " << deleteFolder << " folder:" << std::endl;
     std::cout << std::endl;
 
-    std::ifstream inputFileStream(inputFile, std::ios::in | std::ios::binary);
-    if (inputFileStream) {
+    std::ifstream listFileStream(listFile, std::ios::in | std::ios::binary);
+    if (listFileStream) {
         std::string row;
-        std::getline(inputFileStream, row); // Skip header
-        while (std::getline(inputFileStream, row)) {
+        std::getline(listFileStream, row); // Skip header
+        while (std::getline(listFileStream, row)) {
             try {
                 GameInfo gameInfo = extractGameInfo(row);
 
@@ -231,7 +231,7 @@ void moveHiddenGames(const std::string& inputFile, const std::map<std::string, s
         }
     }
 
-    inputFileStream.close();
+    listFileStream.close();
 
     std::cout << std::endl;
     std::cout << RESET_COLOR << "Results:" << std::endl;
@@ -253,7 +253,7 @@ void moveHiddenGames(const std::string& inputFile, const std::map<std::string, s
 int main() {
     setupConsoleMode();
     printHeader(VERSION);
-    checkFilesExist(INPUT_FILE, CONFIG_FILE);
-    moveHiddenGames(INPUT_FILE, readConfigFile(CONFIG_FILE), DELETE_FOLDER);
+    checkFilesExist(LIST_FILE, CONFIG_FILE);
+    moveHiddenGames(LIST_FILE, readConfigFile(CONFIG_FILE), DELETE_FOLDER);
     return 0;
 }
